@@ -33,15 +33,18 @@
       const ua = navigator.userAgent || "";
       const suspiciousUA = /(bot|crawl|spider|google|baidu|yandex|bing|duckduck|slurp|curl|wget|httpclient|python|java|apex|go-http|phantom|headless|selenium|puppeteer|scrapy|httpx|okhttp|feedfetcher|simplepie)/i.test(ua);
       const automation = navigator.webdriver === true || window._phantom || window.callPhantom || window.__nightmare || window.nightmare;
-      const isHeadless = ua.includes('HeadlessChrome') || window.chrome === undefined || window.navigator.plugins.length === 0;
+      const isHeadless = ua.includes('HeadlessChrome') || window.chrome === undefined || (navigator.plugins && navigator.plugins.length === 0);
       const pluginsEmpty = (navigator.plugins && navigator.plugins.length === 0);
       const languagesEmpty = !navigator.languages || navigator.languages.length === 0;
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       const touchMismatch = (hasTouch && /windows|mac|linux/i.test(ua) && !/android|iphone|ipad|mobile/i.test(ua));
       const screenMismatch = window.screen && (window.screen.width === 0 || window.screen.height === 0);
+
+      // Instead of minimalNavigator check, check for the existence of key properties
       let minimalNavigator = false;
       try {
-        minimalNavigator = Object.keys(navigator).length < 5;
+        const mustHave = ["userAgent", "platform", "vendor", "plugins", "languages"];
+        minimalNavigator = mustHave.filter(prop => prop in navigator).length < mustHave.length;
       } catch (e) {}
 
       // Log details
@@ -94,8 +97,7 @@
       let spoofed = false;
       if (hasTouch && /windows|mac|linux/i.test(ua) && !/android|iphone|ipad|mobile/i.test(ua)) spoofed = true;
       if ((navigator.platform || "").toLowerCase().includes("win") && (navigator.maxTouchPoints || 0) > 0) spoofed = true;
-      if (Object.keys(navigator).length < 5) spoofed = true;
-
+      // Remove unreliable Object.keys(navigator) check
       console.log("isSpoofed check: hasTouch:", hasTouch, "ua:", ua, "spoofed:", spoofed);
       return spoofed;
     }
