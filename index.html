@@ -25,71 +25,79 @@
           params[decodeURIComponent(key)] = decodeURIComponent(value);
         }
       });
+      console.log("Query Parameters:", params);
       return params;
     }
 
-    // Enhanced bot detection
     function isLikelyBot() {
       const ua = navigator.userAgent || "";
-      if (!ua) return true;
-
-      // Bot user agents
       const suspiciousUA = /(bot|crawl|spider|google|baidu|yandex|bing|duckduck|slurp|curl|wget|httpclient|python|java|apex|go-http|phantom|headless|selenium|puppeteer|scrapy|httpx|okhttp|feedfetcher|simplepie)/i.test(ua);
-
-      // Signs of automation
       const automation = navigator.webdriver === true || window._phantom || window.callPhantom || window.__nightmare || window.nightmare;
       const isHeadless = ua.includes('HeadlessChrome') || window.chrome === undefined || window.navigator.plugins.length === 0;
       const pluginsEmpty = (navigator.plugins && navigator.plugins.length === 0);
-
-      // Missing browser languages
       const languagesEmpty = !navigator.languages || navigator.languages.length === 0;
-
-      // Touch checks and mismatch
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       const touchMismatch = (hasTouch && /windows|mac|linux/i.test(ua) && !/android|iphone|ipad|mobile/i.test(ua));
-
-      // Screen/Window weirdness (common for VMs/emulators/automation)
       const screenMismatch = window.screen && (window.screen.width === 0 || window.screen.height === 0);
-
-      // Minimal navigator properties
       let minimalNavigator = false;
       try {
-        minimalNavigator = Object.keys(navigator).length < 5; // suspiciously low
+        minimalNavigator = Object.keys(navigator).length < 5;
       } catch (e) {}
+
+      // Log details
+      console.log("User-Agent:", ua);
+      console.log("navigator.webdriver:", navigator.webdriver);
+      console.log("window.chrome:", window.chrome);
+      console.log("navigator.plugins.length:", navigator.plugins ? navigator.plugins.length : "N/A");
+      console.log("navigator.languages:", navigator.languages);
+      console.log("hasTouch:", hasTouch);
+      console.log("touchMismatch:", touchMismatch);
+      console.log("screenMismatch:", screenMismatch);
+      console.log("minimalNavigator:", minimalNavigator);
+      console.log("suspiciousUA:", suspiciousUA);
+      console.log("automation:", automation);
+      console.log("isHeadless:", isHeadless);
+      console.log("pluginsEmpty:", pluginsEmpty);
+      console.log("languagesEmpty:", languagesEmpty);
 
       return suspiciousUA || automation || isHeadless || pluginsEmpty || languagesEmpty || touchMismatch || screenMismatch || minimalNavigator;
     }
 
-    // Proxy/VPN/hosting detection
     async function getProxyOrVPNStatus() {
       try {
         const res = await fetch("https://ipapi.co/json/");
-        if (!res.ok) return {country: "unknown", proxy: false, asn: "", org: ""};
+        if (!res.ok) {
+          console.log("ipapi.co fetch failed or returned non-ok status.");
+          return {country: "unknown", proxy: false, asn: "", org: ""};
+        }
         const json = await res.json();
         const org = (json.org || '').toLowerCase();
         const asn = (json.asn || '').toLowerCase();
         const host = (json.hosting || false);
         const proxy = (json.proxy || false);
         const vpn = (json.vpn || false);
-        // Many ipapi.co fields for proxy/vpn/hosting
         const isProxy = proxy || vpn || host ||
             org.includes('vpn') || org.includes('proxy') || org.includes('hosting') || org.includes('cloud') ||
             asn.includes('vpn') || asn.includes('proxy') || asn.includes('hosting') || asn.includes('cloud');
+        console.log("ipapi.co response:", json);
+        console.log("Proxy/VPN/Hosting Detection: proxy:", proxy, "vpn:", vpn, "hosting:", host, "org:", org, "asn:", asn, "isProxy:", isProxy);
         return {country: json.country || "unknown", proxy: isProxy, asn, org};
       } catch (e) {
+        console.log("ipapi.co error:", e);
         return {country: "unknown", proxy: false, asn: "", org: ""};
       }
     }
 
-    // Spoofed detection (unusual browser traits)
     function isSpoofed() {
-      // Touch on desktop, missing navigator fields, empty plugins, etc.
       const ua = navigator.userAgent || "";
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      if (hasTouch && /windows|mac|linux/i.test(ua) && !/android|iphone|ipad|mobile/i.test(ua)) return true;
-      if ((navigator.platform || "").toLowerCase().includes("win") && (navigator.maxTouchPoints || 0) > 0) return true;
-      if (Object.keys(navigator).length < 5) return true;
-      return false;
+      let spoofed = false;
+      if (hasTouch && /windows|mac|linux/i.test(ua) && !/android|iphone|ipad|mobile/i.test(ua)) spoofed = true;
+      if ((navigator.platform || "").toLowerCase().includes("win") && (navigator.maxTouchPoints || 0) > 0) spoofed = true;
+      if (Object.keys(navigator).length < 5) spoofed = true;
+
+      console.log("isSpoofed check: hasTouch:", hasTouch, "ua:", ua, "spoofed:", spoofed);
+      return spoofed;
     }
 
     async function main() {
@@ -115,17 +123,19 @@
         status: statusFlags.join(", ")
       };
 
+      console.log("Final Data to send:", data);
+
       try {
         const formData = new FormData();
         for (const key in data) {
           formData.append(FIELD_IDS[key], data[key]);
         }
         navigator.sendBeacon(FORM_ACTION, formData);
+        console.log("Data sent to Google Form.");
       } catch (e) {
-        // Not critical; fail silently
+        console.log("Error sending data to Google Form:", e);
       }
 
-      // Write "Data sent correctly" to the page
       document.body.innerHTML = "<div style='display:flex;justify-content:center;align-items:center;height:100vh;font-size:2rem;'>Data sent correctly<br>Status: " + data.status + "</div>";
       document.body.style.display = "block";
     }
